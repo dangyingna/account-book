@@ -1,10 +1,11 @@
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useBillStore } from '../stores/bills'
 
-const emit = defineEmits(['add'])
+const router = useRouter()
 const billStore = useBillStore()
 const {
   currentMonthBills,
@@ -26,7 +27,7 @@ async function removeBill(id) {
       type: 'warning',
     })
     billStore.removeBill(id)
-    ElMessage.success('账单已删除')
+    ElMessage.success('账单删除成功')
   } catch {
     // 用户取消删除时无需处理
   }
@@ -40,7 +41,7 @@ async function removeBill(id) {
         <h1>首页</h1>
         <p>快速了解你的本月收支情况</p>
       </div>
-      <el-button type="primary" @click="emit('add')">记一笔</el-button>
+      <el-button type="primary" @click="router.push('/add')">记一笔</el-button>
     </div>
 
     <div class="summary-grid">
@@ -67,9 +68,11 @@ async function removeBill(id) {
       </template>
       <el-table :data="currentMonthBills">
         <template #empty>
-          <div class="month-empty">
-            本月还没有记录，点击左侧「记一笔」开始记账！
-          </div>
+          <el-empty
+            class="empty-state"
+            :image-size="80"
+            description="本月暂无账单，点击「记一笔」开始记录吧"
+          />
         </template>
         <el-table-column prop="date" label="日期" min-width="110" />
         <el-table-column prop="category" label="分类" min-width="100" />
@@ -117,10 +120,4 @@ async function removeBill(id) {
   background: #fff0ef;
 }
 
-.month-empty {
-  padding: 54px 20px;
-  color: #98a2b3;
-  font-size: 14px;
-  text-align: center;
-}
 </style>

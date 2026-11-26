@@ -163,6 +163,17 @@ select {
   --el-table-text-color: #475467;
 }
 
+.empty-state {
+  padding: 36px 16px;
+}
+
+.empty-state .el-empty__description {
+  margin-top: 12px;
+  color: #98a2b3;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 @media (max-width: 900px) {
   .main-content {
     padding: 28px;

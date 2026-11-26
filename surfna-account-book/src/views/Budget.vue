@@ -47,13 +47,13 @@ const categoryRows = computed(() => expenseCategories.value.map((category) => {
 }))
 
 function saveBudget(category) {
-  const amount = draftBudgets[category]
-  if (amount === null || amount === undefined || amount <= 0) {
+  const amount = Number(draftBudgets[category])
+  if (!Number.isFinite(amount) || amount <= 0) {
     ElMessage.warning('请输入大于 0 的预算金额')
     return
   }
   billStore.setCategoryBudget(category, amount)
-  ElMessage.success(`${category}预算已保存`)
+  ElMessage.success(`「${category}」预算保存成功`)
 }
 </script>
 
@@ -66,7 +66,7 @@ function saveBudget(category) {
       </div>
     </div>
 
-    <div class="budget-grid">
+    <div v-if="categoryRows.length" class="budget-grid">
       <el-card
         v-for="row in categoryRows"
         :key="row.category"
@@ -125,6 +125,13 @@ function saveBudget(category) {
         <p v-else class="budget-tip">设置预算后，即可查看使用进度和剩余额度</p>
       </el-card>
     </div>
+    <el-card v-else shadow="never" class="content-card">
+      <el-empty
+        class="empty-state"
+        :image-size="80"
+        description="暂无支出分类，请先在设置页新增一级分类"
+      />
+    </el-card>
   </section>
 </template>
 

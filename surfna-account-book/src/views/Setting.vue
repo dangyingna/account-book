@@ -82,7 +82,7 @@ function saveCategory() {
   }
 
   categoryDialog.visible = false
-  ElMessage.success('分类已保存')
+  ElMessage.success('分类保存成功')
 }
 
 async function deletePrimaryCategory(primary) {
@@ -93,7 +93,7 @@ async function deletePrimaryCategory(primary) {
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' },
     )
     billStore.deletePrimaryCategory(selectedType.value, primary)
-    ElMessage.success('一级分类已删除')
+    ElMessage.success('一级分类删除成功')
   } catch {
     // 用户取消删除时无需处理
   }
@@ -107,7 +107,7 @@ async function deleteSecondaryCategory(primary, name) {
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' },
     )
     billStore.deleteSecondaryCategory(selectedType.value, primary, name)
-    ElMessage.success('二级分类已删除')
+    ElMessage.success('二级分类删除成功')
   } catch {
     // 用户取消删除时无需处理
   }
@@ -115,7 +115,7 @@ async function deleteSecondaryCategory(primary, name) {
 
 function hasBills() {
   if (bills.value.length > 0) return true
-  ElMessage.warning('暂无账单可以导出')
+  ElMessage.warning('暂无可导出的账单')
   return false
 }
 
@@ -134,7 +134,7 @@ function exportJson() {
   link.download = `冲浪娜记账-账单-${new Date().toISOString().slice(0, 10)}.json`
   link.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('JSON 账单已导出')
+  ElMessage.success('JSON 账单导出成功')
 }
 
 function exportExcel() {
@@ -151,7 +151,7 @@ function exportExcel() {
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, '账单')
   XLSX.writeFile(workbook, '冲浪娜记账-账单.xlsx')
-  ElMessage.success('Excel 账单已导出')
+  ElMessage.success('Excel 账单导出成功')
 }
 
 async function importJson(event) {
@@ -219,7 +219,7 @@ async function clearBills() {
       },
     )
     billStore.clearBills()
-    ElMessage.success('全部账单已清空')
+    ElMessage.success('全部账单清空成功')
   } catch {
     // 用户取消清空时无需处理
   }
@@ -277,7 +277,12 @@ async function clearBills() {
           </el-button>
         </div>
       </div>
-      <el-empty v-if="!Object.keys(currentCategories).length" description="暂无分类，请先新增一级分类" />
+      <el-empty
+        v-if="!Object.keys(currentCategories).length"
+        class="empty-state"
+        :image-size="80"
+        description="暂无分类，请先新增一级分类"
+      />
     </el-card>
 
     <el-card shadow="never" class="content-card">

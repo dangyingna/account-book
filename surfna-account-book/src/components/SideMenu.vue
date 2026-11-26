@@ -1,19 +1,13 @@
 <script setup>
-defineProps({
-  activePage: {
-    type: String,
-    required: true,
-  },
-})
+import { useRoute } from 'vue-router'
 
-const emit = defineEmits(['change'])
-
+const route = useRoute()
 const menus = [
-  { key: 'home', label: '首页' },
-  { key: 'add', label: '记一笔' },
-  { key: 'statistics', label: '统计' },
-  { key: 'budget', label: '预算' },
-  { key: 'setting', label: '设置' },
+  { path: '/', label: '首页' },
+  { path: '/add', label: '记一笔' },
+  { path: '/statistics', label: '统计' },
+  { path: '/budget', label: '预算' },
+  { path: '/setting', label: '设置' },
 ]
 </script>
 
@@ -27,12 +21,8 @@ const menus = [
       </div>
     </div>
 
-    <el-menu
-      :default-active="activePage"
-      class="menu-list"
-      @select="emit('change', $event)"
-    >
-      <el-menu-item v-for="menu in menus" :key="menu.key" :index="menu.key">
+    <el-menu :default-active="route.path" router class="menu-list">
+      <el-menu-item v-for="menu in menus" :key="menu.path" :index="menu.path">
         {{ menu.label }}
       </el-menu-item>
     </el-menu>

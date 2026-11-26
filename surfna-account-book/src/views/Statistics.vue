@@ -105,7 +105,15 @@ function resizeChart() {
 watch([selectedMonth, chartType], () => {
   drillPrimary.value = ''
 })
-watch(chartData, () => nextTick(renderChart), { deep: true })
+watch(chartData, async () => {
+  await nextTick()
+  if (!chartData.value.length) {
+    chart?.clear()
+    return
+  }
+  renderChart()
+  chart?.resize()
+}, { deep: true })
 
 onMounted(() => {
   renderChart()
@@ -169,6 +177,8 @@ onBeforeUnmount(() => {
       <div v-show="chartData.length" ref="chartRef" class="statistics-chart" />
       <el-empty
         v-if="!chartData.length"
+        class="empty-state"
+        :image-size="80"
         :description="`${monthLabel}暂无${chartTypeLabel}记录，记一笔后即可查看统计`"
       />
     </el-card>
@@ -182,7 +192,11 @@ onBeforeUnmount(() => {
       </template>
       <el-table :data="monthlyBills">
         <template #empty>
-          <div class="month-empty">{{ monthLabel }}还没有账单记录</div>
+          <el-empty
+            class="empty-state"
+            :image-size="80"
+            :description="`${monthLabel}暂无账单记录`"
+          />
         </template>
         <el-table-column prop="date" label="日期" min-width="110" />
         <el-table-column label="类型" width="90" align="center">
@@ -236,13 +250,6 @@ onBeforeUnmount(() => {
 .statistics-chart {
   width: 100%;
   height: 430px;
-}
-
-.month-empty {
-  padding: 44px 20px;
-  color: #98a2b3;
-  font-size: 14px;
-  text-align: center;
 }
 
 @media (max-width: 760px) {

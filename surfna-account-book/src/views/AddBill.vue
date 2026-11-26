@@ -1,10 +1,11 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { useBillStore } from '../stores/bills'
 
-const emit = defineEmits(['saved'])
+const router = useRouter()
 const billStore = useBillStore()
 const { categories } = storeToRefs(billStore)
 const formRef = ref()
@@ -71,8 +72,8 @@ async function submit() {
     date: form.date,
     note: form.note,
   })
-  ElMessage.success('保存成功')
-  emit('saved')
+  ElMessage.success('账单保存成功')
+  router.push('/')
 }
 </script>
 
@@ -99,6 +100,7 @@ async function submit() {
             <el-select
               v-model="form.primaryCategory"
               placeholder="请选择一级分类"
+              no-data-text="暂无一级分类，请先在设置页新增"
               class="full-width"
               @change="handlePrimaryCategoryChange"
             >
@@ -116,6 +118,7 @@ async function submit() {
               v-model="form.secondaryCategory"
               :disabled="!form.primaryCategory"
               :placeholder="form.primaryCategory ? '请选择二级分类' : '请先选择一级分类'"
+              no-data-text="暂无二级分类，请先在设置页新增"
               class="full-width"
             >
               <el-option
