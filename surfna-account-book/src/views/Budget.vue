@@ -4,19 +4,19 @@ import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { useBillStore } from '../stores/bills'
 
-const categories = ['日常消费', '投资', '人情往来', '其他']
 const billStore = useBillStore()
-const { budgets, currentMonthBills } = storeToRefs(billStore)
+const { budgets, currentMonthBills, categories } = storeToRefs(billStore)
 const draftBudgets = reactive({})
+const expenseCategories = computed(() => Object.keys(categories.value.expense))
 
 const currentMonthLabel = computed(() => {
   const now = new Date()
   return `${now.getFullYear()}年${now.getMonth() + 1}月`
 })
 
-watch(budgets, (value) => {
-  categories.forEach((category) => {
-    draftBudgets[category] = Number(value[category] || 0)
+watch([budgets, expenseCategories], ([budgetValues, categoryNames]) => {
+  categoryNames.forEach((category) => {
+    draftBudgets[category] = Number(budgetValues[category] || 0)
   })
 }, { deep: true, immediate: true })
 
@@ -24,7 +24,7 @@ function primaryCategoryOf(bill) {
   return bill.primaryCategory || bill.category?.split(' / ')[0] || '其他'
 }
 
-const categoryRows = computed(() => categories.map((category) => {
+const categoryRows = computed(() => expenseCategories.value.map((category) => {
   const spent = currentMonthBills.value
     .filter((bill) => bill.type === 'expense' && primaryCategoryOf(bill) === category)
     .reduce((total, bill) => total + Number(bill.amount), 0)

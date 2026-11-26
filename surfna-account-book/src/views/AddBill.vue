@@ -1,30 +1,17 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { useBillStore } from '../stores/bills'
 
 const emit = defineEmits(['saved'])
 const billStore = useBillStore()
+const { categories } = storeToRefs(billStore)
 const formRef = ref()
 
 function today() {
   const date = new Date()
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-const categories = {
-  expense: {
-    日常消费: ['餐饮', '交通', '购物', '住房', '娱乐', '医疗', '教育', '通讯', '其他'],
-    投资: ['股票', '基金', '理财产品', '黄金', '其他'],
-    人情往来: ['礼金', '红包', '请客', '礼物', '其他'],
-    其他: ['其他支出'],
-  },
-  income: {
-    工资: ['基本工资', '绩效奖金', '年终奖', '补贴', '其他'],
-    兼职: ['副业收入', '劳务报酬', '稿费', '其他'],
-    红包: ['节日红包', '生日红包', '转账红包', '其他'],
-    其他: ['理财收益', '退款', '其他收入'],
-  },
 }
 
 const form = reactive({
@@ -36,9 +23,9 @@ const form = reactive({
   note: '',
 })
 
-const primaryCategoryOptions = computed(() => Object.keys(categories[form.type]))
+const primaryCategoryOptions = computed(() => Object.keys(categories.value[form.type]))
 const secondaryCategoryOptions = computed(() => {
-  return form.primaryCategory ? categories[form.type][form.primaryCategory] : []
+  return form.primaryCategory ? categories.value[form.type][form.primaryCategory] : []
 })
 
 function validateAmount(rule, value, callback) {
