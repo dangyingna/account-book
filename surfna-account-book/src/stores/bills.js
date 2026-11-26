@@ -2,13 +2,18 @@ import { defineStore } from 'pinia'
 import { loadStorage, removeStorage, saveStorage } from '../utils/storage'
 
 const BILLS_KEY = 'surfna-account-book-bills'
-const BUDGET_KEY = 'surfna-account-book-budget'
+const BUDGETS_KEY = 'surfna-account-book-budget'
 
 export const useBillStore = defineStore('bills', {
-  state: () => ({
-    bills: loadStorage(BILLS_KEY, []),
-    budget: loadStorage(BUDGET_KEY, 3000),
-  }),
+  state: () => {
+    const savedBudgets = loadStorage(BUDGETS_KEY, {})
+    return {
+      bills: loadStorage(BILLS_KEY, []),
+      budgets: savedBudgets && typeof savedBudgets === 'object' && !Array.isArray(savedBudgets)
+        ? savedBudgets
+        : {},
+    }
+  },
   getters: {
     totalIncome: (state) => state.bills
       .filter((bill) => bill.type === 'income')
@@ -42,7 +47,7 @@ export const useBillStore = defineStore('bills', {
   actions: {
     persist() {
       saveStorage(BILLS_KEY, this.bills)
-      saveStorage(BUDGET_KEY, this.budget)
+      saveStorage(BUDGETS_KEY, this.budgets)
     },
     addBill(bill) {
       this.bills.unshift({
@@ -56,15 +61,15 @@ export const useBillStore = defineStore('bills', {
       this.bills = this.bills.filter((bill) => bill.id !== id)
       this.persist()
     },
-    setBudget(amount) {
-      this.budget = Number(amount)
+    setCategoryBudget(category, amount) {
+      this.budgets[category] = Number(amount)
       this.persist()
     },
     clearData() {
       this.bills = []
-      this.budget = 3000
+      this.budgets = {}
       removeStorage(BILLS_KEY)
-      removeStorage(BUDGET_KEY)
+      removeStorage(BUDGETS_KEY)
     },
   },
 })

@@ -1,35 +1,59 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { useBillStore } from '../stores/bills'
 
+const categories = ['日常消费', '投资', '人情往来', '其他']
 const billStore = useBillStore()
-const { budget, currentMonthExpense } = storeToRefs(billStore)
-const budgetAmount = ref(budget.value)
+const { budgets, currentMonthBills } = storeToRefs(billStore)
+const draftBudgets = reactive({})
 
-watch(budget, (value) => {
-  budgetAmount.value = value
+const currentMonthLabel = computed(() => {
+  const now = new Date()
+  return `${now.getFullYear()}年${now.getMonth() + 1}月`
 })
 
-const remaining = computed(() => budget.value - currentMonthExpense.value)
-const percentage = computed(() => {
-  if (budget.value <= 0) return currentMonthExpense.value > 0 ? 100 : 0
-  return Math.min(Math.round((currentMonthExpense.value / budget.value) * 100), 100)
-})
-const progressStatus = computed(() => {
-  if (currentMonthExpense.value > budget.value) return 'exception'
-  if (percentage.value >= 80) return 'warning'
-  return 'success'
-})
+watch(budgets, (value) => {
+  categories.forEach((category) => {
+    draftBudgets[category] = Number(value[category] || 0)
+  })
+}, { deep: true, immediate: true })
 
-function saveBudget() {
-  if (!budgetAmount.value || budgetAmount.value <= 0) {
+function primaryCategoryOf(bill) {
+  return bill.primaryCategory || bill.category?.split(' / ')[0] || '其他'
+}
+
+const categoryRows = computed(() => categories.map((category) => {
+  const spent = currentMonthBills.value
+    .filter((bill) => bill.type === 'expense' && primaryCategoryOf(bill) === category)
+    .reduce((total, bill) => total + Number(bill.amount), 0)
+  const budget = Number(budgets.value[category] || 0)
+  const remaining = budget - spent
+  const isOverBudget = budget > 0 && spent > budget
+  const percentage = budget > 0
+    ? Math.min(Math.round((spent / budget) * 100), 100)
+    : 0
+
+  return {
+    category,
+    spent,
+    budget,
+    remaining,
+    isOverBudget,
+    percentage,
+    progressStatus: isOverBudget ? 'exception' : percentage >= 80 ? 'warning' : 'success',
+  }
+}))
+
+function saveBudget(category) {
+  const amount = draftBudgets[category]
+  if (amount === null || amount === undefined || amount <= 0) {
     ElMessage.warning('请输入大于 0 的预算金额')
     return
   }
-  billStore.setBudget(budgetAmount.value)
-  ElMessage.success('本月预算已保存')
+  billStore.setCategoryBudget(category, amount)
+  ElMessage.success(`${category}预算已保存`)
 }
 </script>
 
@@ -38,83 +62,180 @@ function saveBudget() {
     <div class="page-heading">
       <div>
         <h1>预算</h1>
-        <p>设置月度支出预算，控制消费节奏</p>
+        <p>按一级分类设置月度预算，自动对比 {{ currentMonthLabel }} 的实际支出</p>
       </div>
     </div>
 
-    <el-card shadow="never" class="content-card form-card">
-      <el-form label-position="top" @submit.prevent>
-        <el-form-item label="每月支出预算（元）">
+    <div class="budget-grid">
+      <el-card
+        v-for="row in categoryRows"
+        :key="row.category"
+        shadow="never"
+        class="content-card budget-card"
+        :class="{ 'is-over-budget': row.isOverBudget }"
+      >
+        <template #header>
+          <div class="budget-header">
+            <strong>{{ row.category }}</strong>
+            <el-tag v-if="row.isOverBudget" type="danger" effect="dark">已超支</el-tag>
+            <span v-else-if="row.budget <= 0" class="unset-text">未设置预算</span>
+          </div>
+        </template>
+
+        <div class="budget-editor">
           <el-input-number
-            v-model="budgetAmount"
+            v-model="draftBudgets[row.category]"
             :min="0"
             :precision="2"
             :controls="false"
-            class="full-width"
-          />
-        </el-form-item>
-        <el-button type="primary" @click="saveBudget">保存预算</el-button>
-      </el-form>
-    </el-card>
+            placeholder="月度预算"
+            class="budget-input"
+          >
+            <template #prefix>¥</template>
+            <template #suffix>元</template>
+          </el-input-number>
+          <el-button type="primary" @click="saveBudget(row.category)">保存</el-button>
+        </div>
 
-    <el-card shadow="never" class="content-card budget-card">
-      <template #header><strong>本月预算使用情况</strong></template>
-      <el-progress
-        :percentage="percentage"
-        :status="progressStatus"
-        :stroke-width="16"
-      />
-      <div class="budget-details">
-        <div>
-          <span>本月已支出</span>
-          <strong class="expense-text">¥ {{ currentMonthExpense.toFixed(2) }}</strong>
+        <div class="budget-stats">
+          <div>
+            <span>本月已花费</span>
+            <strong class="expense-text">¥ {{ row.spent.toFixed(2) }}</strong>
+          </div>
+          <div>
+            <span>剩余额度</span>
+            <strong v-if="row.budget > 0" :class="row.remaining < 0 ? 'expense-text' : 'income-text'">
+              ¥ {{ row.remaining.toFixed(2) }}
+            </strong>
+            <strong v-else class="unset-amount">—</strong>
+          </div>
         </div>
-        <div>
-          <span>剩余预算</span>
-          <strong :class="remaining < 0 ? 'expense-text' : 'income-text'">
-            ¥ {{ remaining.toFixed(2) }}
-          </strong>
-        </div>
-        <div>
-          <span>月度预算</span>
-          <strong>¥ {{ Number(budget).toFixed(2) }}</strong>
-        </div>
-      </div>
-    </el-card>
+
+        <template v-if="row.budget > 0">
+          <el-progress
+            :percentage="row.percentage"
+            :status="row.progressStatus"
+            :stroke-width="12"
+          />
+          <p v-if="row.isOverBudget" class="over-budget-tip">
+            已超支 ¥ {{ Math.abs(row.remaining).toFixed(2) }}，请注意控制本类支出
+          </p>
+          <p v-else class="budget-tip">本月预算 ¥ {{ row.budget.toFixed(2) }}</p>
+        </template>
+        <p v-else class="budget-tip">设置预算后，即可查看使用进度和剩余额度</p>
+      </el-card>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.budget-card {
-  margin-top: 20px;
-}
-
-.budget-details {
+.budget-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
-  margin-top: 32px;
 }
 
-.budget-details span,
-.budget-details strong {
+.budget-card {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.budget-card.is-over-budget {
+  border-color: #ef6461;
+  box-shadow: 0 0 0 2px rgba(239, 100, 97, 0.08);
+}
+
+.budget-card.is-over-budget :deep(.el-card__header) {
+  background: #fff5f4;
+}
+
+.budget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.budget-header strong {
+  color: #182230;
+  font-size: 17px;
+}
+
+.unset-text {
+  color: #98a2b3;
+  font-size: 13px;
+}
+
+.budget-editor {
+  display: flex;
+  gap: 12px;
+}
+
+.budget-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.budget-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 26px 0 22px;
+}
+
+.budget-stats > div:last-child {
+  text-align: right;
+}
+
+.budget-stats span,
+.budget-stats strong {
   display: block;
 }
 
-.budget-details span {
+.budget-stats span {
   color: #98a2b3;
   font-size: 13px;
   margin-bottom: 8px;
 }
 
-.budget-details strong {
+.budget-stats strong {
   color: #182230;
-  font-size: 20px;
+  font-size: 22px;
 }
 
-@media (max-width: 600px) {
-  .budget-details {
+.budget-stats .unset-amount {
+  color: #c0c6cf;
+}
+
+.budget-tip,
+.over-budget-tip {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.budget-tip {
+  color: #98a2b3;
+}
+
+.over-budget-tip {
+  color: #ef6461;
+  font-weight: 600;
+}
+
+@media (max-width: 1000px) {
+  .budget-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .budget-editor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .budget-stats strong {
+    font-size: 19px;
   }
 }
 </style>
